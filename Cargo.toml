@@ -1,0 +1,6 @@
+[package]
+name = "gpupt"
+version = "0.1.0"
+authors = ["Christian Carlsson <christian-carlsson@outlook.com>"]
+
+[dependencies]
