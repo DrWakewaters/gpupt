@@ -1,8 +1,6 @@
 extern crate ocl;
 extern crate png;
 
-mod pngfile;
-
 use std::env::current_dir;
 use std::io::{BufWriter};
 use std::fs::File;
@@ -164,7 +162,7 @@ fn main() {
             writer.write_image_data(&colors_for_drawing);
         }
         Err(e) => {
-			println!("{:?}", e);
-		}
+            println!("{:?}", e);
+        }
     }
 }
