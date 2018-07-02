@@ -35,11 +35,9 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         float e_1[3];
         float e_2[3];
         float normal[3];
-        float t_3[3];
         float t_1[3];
         float t_2[3];
         float color[3];
-        float lambertian_probability;
         bool is_light;
     };
 
@@ -49,50 +47,51 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
     };
 
     // Headers.
-
-    void cross_33(float *left, float *right, float *result);
-    void dot_33(float *left, float *right, float *result);
-    void sub_33(float *left, float *right, float *result);
-    void add_33(float *left, float *right, float *result);
-    void mul_13(float scalar, float *vector, float *result);
-    void length_3(float *vector, float *result);
-    void normalise_3(float *vector);
-    void set_basis_vectors(float *u_1, float *u_2, float *u_3, float *normal);
-    void lambertian_on_hemisphere(float *normal, float *t_3, float *t_1, float *t_2, float *direction, unsigned long *state);
-    void specular_on_hemisphere(float *normal, float *incoming_direction, float *direction);
-    unsigned int next_uint(unsigned long *state);
-    float next_float(unsigned long *state);
-    void pcg_init(unsigned long seed, unsigned long *state);
-    float triangle_ray_distance(struct triangle *t, struct ray *r);
+    void cross_33(float *restrict left, float *restrict right, float *restrict result);
+    void dot_33(float *restrict left, float *restrict right, float *restrict result);
+    void sub_33(float *restrict left, float *restrict right, float *restrict result);
+    void add_33(float *restrict left, float *restrict right, float *restrict result);
+    void mul_13(float scalar, float *restrict vector, float *restrict result);
+    void length_3(float *restrict vector, float *restrict result);
+    void normalise_3(float *restrict vector);
+    void triangle_ray_distance(struct triangle *restrict t, struct ray *restrict r, float *restrict triangle_distance);
+    void lambertian_on_hemisphere(float *restrict normal, float *restrict t_1, float *restrict t_2, float *restrict direction, unsigned long *restrict state);
+    void next_uint(unsigned long *restrict state, unsigned int *restrict random);
+    void next_float(unsigned long *restrict state, float *restrict random);
+    void pcg_init(unsigned long seed, unsigned long *restrict state);
 
     // Functions.
 
-    void cross_33(float *left, float *right, float *result) {
+    void cross_33(float *restrict left, float *restrict right, float *restrict result) {
         result[0] = left[1]*right[2]-left[2]*right[1];
         result[1] = left[2]*right[0]-left[0]*right[2];
         result[2] = left[0]*right[1]-left[1]*right[0];
     }
 
-    void dot_33(float *left, float *right, float *result) {
+    void dot_33(float *restrict left, float *restrict right, float *restrict result) {
         *result = left[0]*right[0]+left[1]*right[1]+left[2]*right[2];
     }
 
-    void sub_33(float *left, float *right, float *result) {
+    void sub_33(float *restrict left, float *restrict right, float *restrict result) {
         result[0] = left[0]-right[0];
         result[1] = left[1]-right[1];
         result[2] = left[2]-right[2];
     }
 
-    void add_33(float *left, float *right, float *result) {
+    void add_33(float *restrict left, float *restrict right, float *restrict result) {
         result[0] = left[0]+right[0];
         result[1] = left[1]+right[1];
         result[2] = left[2]+right[2];
     }
 
-    void mul_13(float scalar, float *vector, float *result) {
+    void mul_13(float scalar, float *restrict vector, float *restrict result) {
         result[0] = scalar*vector[0];
         result[1] = scalar*vector[1];
         result[2] = scalar*vector[2];
+    }
+
+    void length_3(float *restrict vector, float *restrict result) {
+        *result = sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
     }
 
     void normalise_3(float *vector) {
@@ -102,18 +101,15 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         vector[2] /= length;
     }
 
-    void length_3(float *vector, float *result) {
-        *result = sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
-    }
-
     // The distance to a triangle along a given ray.
-    float triangle_ray_distance(struct triangle *t, struct ray *r) {
+    void triangle_ray_distance(struct triangle *restrict t, struct ray *restrict r, float *restrict triangle_distance) {
         float h[3] = {0.0, 0.0, 0.0};
         cross_33(r->direction, t->e_2, h);
         float a = 0.0;
         dot_33(t->e_1, h, &a);
         if(a < 1.0e-6 && a > -1.0e-6) {
-            return FLT_MAX;
+            *triangle_distance = FLT_MAX;
+            return;
         }
         float f = 1.0/a;
         float s[3] = {0.0, 0.0, 0.0};
@@ -122,7 +118,8 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         dot_33(s, h, &u);
         u *= f;
         if(u < 1.0e-6 || u > 1.0-1.0e-6) {
-            return FLT_MAX;
+            *triangle_distance = FLT_MAX;
+            return;
         }
         float q[3] = {0.0, 0.0, 0.0};
         cross_33(s, t->e_1, q);
@@ -130,105 +127,27 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         dot_33(r->direction, q, &v);
         v *= f;
         if(v < 1.0e-6 || u+v > 1.0-1.0e-6) {
-            return FLT_MAX;
+            *triangle_distance = FLT_MAX;
+            return;
         }
         float distance = 0.0;
         dot_33(t->e_2, q, &distance);
         distance *= f;
         if(distance < 1.0e-6) {
-            return FLT_MAX;
+            *triangle_distance = FLT_MAX;
+            return;
         }
-        return distance;
-    }
-
-    // Use the Gram-Schmidt process to find an ON basis. Let normal be one of the basis vectors.
-    // Might not be the quickest way to achieve this. The implementation can be improved.
-    void set_basis_vectors(float *u_1, float *u_2, float *u_3, float *normal) {
-        u_1[0] = normal[0];
-        u_1[1] = normal[1];
-        u_1[2] = normal[2];
-        normalise_3(u_1);
-        float v_2[3] = {0.0, 0.0, 1.0};
-        float v_3[3] = {0.0, 1.0, 0.0};
-
-        float u_1_v_2 = 0.0;
-        dot_33(u_1, v_2, &u_1_v_2);
-        float u_1_v_2_u_1[3] = {0.0, 0.0, 0.0};
-        mul_13(u_1_v_2, u_1, u_1_v_2_u_1);
-        sub_33(v_2, u_1_v_2_u_1, u_2);
-
-        float u_2_length = 0.0;
-        length_3(u_2, &u_2_length);
-        if(u_2_length < 1.0e-6) {
-            v_2[0] = 1.0;
-            v_2[1] = 0.0;
-            v_2[2] = 0.0;
-
-            float u_1_v_2 = 0.0;
-            dot_33(u_1, v_2, &u_1_v_2);
-            float u_1_v_2_u_1[3] = {0.0, 0.0, 0.0};
-            mul_13(u_1_v_2, u_1, u_1_v_2_u_1);
-            sub_33(v_2, u_1_v_2_u_1, u_2);
-        }
-        normalise_3(u_2);
-
-        float u_1_v_3 = 0.0;
-        dot_33(u_1, v_3, &u_1_v_3);
-        float u_1_v_3_u_1[3] = {0.0, 0.0, 0.0};
-        mul_13(u_1_v_3, u_1, u_1_v_3_u_1);
-
-        float u_2_v_3 = 0.0;
-        dot_33(u_2, v_3, &u_2_v_3);
-        float u_2_v_3_u_2[3] = {0.0, 0.0, 0.0};
-        mul_13(u_2_v_3, u_2, u_2_v_3_u_2);
-
-        float v_3_minus_u_1_v_3_u_1[3] = {0.0, 0.0, 0.0};
-        sub_33(v_3, u_1_v_3_u_1, v_3_minus_u_1_v_3_u_1);
-
-        sub_33(v_3_minus_u_1_v_3_u_1, u_2_v_3_u_2, u_3);
-
-        float u_3_length = 0.0;
-        length_3(u_3, &u_3_length);
-        if(u_3_length < 1.0e-6) {
-            v_3[0] = 1.0;
-            v_3[1] = 0.0;
-            v_3[2] = 0.0;
-
-            float u_1_v_3 = 0.0;
-            dot_33(u_1, v_3, &u_1_v_3);
-            float u_1_v_3_u_1[3] = {0.0, 0.0, 0.0};
-            mul_13(u_1_v_3, u_1, u_1_v_3_u_1);
-
-            float u_2_v_3 = 0.0;
-            dot_33(u_2, v_3, &u_2_v_3);
-            float u_2_v_3_u_2[3] = {0.0, 0.0, 0.0};
-            mul_13(u_2_v_3, u_2, u_2_v_3_u_2);
-
-            float v_3_minus_u_1_v_3_u_1[3] = {0.0, 0.0, 0.0};
-            sub_33(v_3, u_1_v_3_u_1, v_3_minus_u_1_v_3_u_1);
-
-            sub_33(v_3_minus_u_1_v_3_u_1, u_2_v_3_u_2, u_3);
-        }
-        normalise_3(u_3);
-    }
-
-    // Find the mirror-like reflection of a ray that hits a surface with a known normal.
-    void specular_on_hemisphere(float *normal, float *incoming_direction, float *direction) {
-        float factor = 0.0;
-        dot_33(incoming_direction, normal, &factor);
-        factor *= 2.0;
-        float direction_modifier[3] = {0.0, 0.0, 0.0};
-        mul_13(factor, normal, direction_modifier);
-        sub_33(incoming_direction, direction_modifier, direction);
-        normalise_3(direction);
+        *triangle_distance = distance;
     }
 
     // Find a random reflection of a ray that hits a surface with a known normal.
     // The direction is picked from the Lambertian distribution, which is used for perfectly
     // diffuse materials.
-    void lambertian_on_hemisphere(float *normal, float *t_3, float *t_1, float *t_2, float *direction, unsigned long *state) {
-        float r_1 = next_float(state);
-        float r_2 = next_float(state);
+    void lambertian_on_hemisphere(float *restrict normal, float *restrict t_1, float *restrict t_2, float *restrict direction, unsigned long *restrict state) {
+        float r_1 = 0.0;
+        next_float(state, &r_1);
+        float r_2 = 0.0;
+        next_float(state, &r_2);
 
         float sqrt_arg = 1.0-r_1;
         float sin_theta = sqrt(sqrt_arg);
@@ -242,7 +161,7 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         mul_13(sin_theta*sin(phi), t_2, b);
 
         float c[3] = {0.0, 0.0, 0.0};
-        mul_13(cos_theta, t_3, c);
+        mul_13(cos_theta, normal, c);
 
         float d[3] = {0.0, 0.0, 0.0};
 
@@ -256,21 +175,24 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
     }
 
     // A random number generator. See https://en.wikipedia.org/wiki/Permuted_congruential_generator
-    unsigned int next_uint(unsigned long *state) {
+    void next_uint(unsigned long *restrict state, unsigned int *restrict random) {
         unsigned long x = *state;
         unsigned int count = (unsigned int)(x >> 59);
         *state = x*multiplier + increment;
         x ^= x >> 18;
-        return (((unsigned int)(x >> 27)) >> count) | (((unsigned int)(x >> 27)) << (-count & 31));
+        *random = (((unsigned int)(x >> 27)) >> count) | (((unsigned int)(x >> 27)) << (-count & 31));
     }
 
-    float next_float(unsigned long *state) {
-        return ((float)next_uint(state))/((float)UINT_MAX);
+    void next_float(unsigned long *restrict state, float *restrict random) {
+        unsigned int random_uint = 0;
+        next_uint(state, &random_uint);
+        *random = ((float)random_uint)/((float)UINT_MAX);
     }
 
-    void pcg_init(unsigned long seed, unsigned long *state) {
-        *state = seed*0x4d595df4d0f33173 + increment;
-        (void)next_uint(state);
+    void pcg_init(unsigned long seed, unsigned long *restrict state) {
+        *state = 2*seed + 1;
+        unsigned int random = 0;
+        next_uint(state, &random);
     }
 
     // Kernels.
@@ -280,74 +202,77 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
         // It is very important that we do not initialise the random number generator with the same
         // seed for all pixels and that a pixel gets a different seed for every outer iteration.
         pcg_init(((unsigned long)get_global_id(0))*(outer_iteration+1), &state);
-        struct triangle triangles[34] = {
+        struct triangle triangles[36] = {
             // Left wall.
-            {{0.0, 0.0, 0.0}, {0.0, 1.0, 1.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.2, 0.2}, 1.0, false},
-            {{0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.2, 0.2}, 1.0, false},
+            {{0.0, 0.0, 0.0}, {0.0, 1.0, 1.0}, {0.0, 1.0, 0.0}, {0.0, 1.0, 1.0}, {0.0, 1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.2, 0.2}, false},
+            {{0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.2, 0.2}, false},
             // Right wall.
-            {{1.0, 0.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.2, 0.8, 0.2}, 1.0, false},
-            {{1.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.2, 0.8, 0.2}, 1.0, false},
+            {{1.0, 0.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}, {0.0, 1.0, -1.0}, {0.0, 1.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.2, 0.8, 0.2}, false},
+            {{1.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 1.0, -1.0}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.2, 0.8, 0.2}, false},
             // Floor.
-            {{0.0, 1.0, 1.0}, {1.0, 1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            // Ceiling light.
-            {{0.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, 1.0, true},
-            {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, 1.0, true},
+            {{0.0, 1.0, 1.0}, {1.0, 1.0, 0.0}, {0.0, 1.0, 0.0}, {1.0, 0.0, -1.0}, {0.0, 0.0, -1.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 0.0, 0.0}, {1.0, 0.0, -1.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            // Ceiling.
+            {{0.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Far wall.
-            {{0.0, 0.0, 1.0}, {1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.0, 0.0, 1.0}, {1.0, 0.0, 1.0}, {1.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.0, 0.0, 1.0}, {1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}, {1.0, 1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.0, 0.0, 1.0}, {1.0, 0.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Left side of cube 1.
-            {{0.1, 0.8, 0.7}, {0.1, 1.0, 0.9}, {0.1, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.1, 0.8, 0.7}, {0.1, 0.8, 0.9}, {0.1, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.1, 0.8, 0.7}, {0.1, 1.0, 0.9}, {0.1, 1.0, 0.7}, {0.0, 0.2, 0.2}, {0.0, 0.2, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
+            {{0.1, 0.8, 0.7}, {0.1, 0.8, 0.9}, {0.1, 1.0, 0.9}, {0.0, 0.0, 0.2}, {0.0, 0.2, 0.2}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
             // Right side of cube 1.
-            {{0.3, 0.8, 0.9}, {0.3, 1.0, 0.7}, {0.3, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.3, 0.8, 0.9}, {0.3, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.3, 0.8, 0.9}, {0.3, 1.0, 0.7}, {0.3, 1.0, 0.9}, {0.0, 0.2, -0.2}, {0.0, 0.2, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
+            {{0.3, 0.8, 0.9}, {0.3, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.0, 0.0, -0.2}, {0.0, 0.2, -0.2}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
             // Bottom of cube 1.
-            {{0.1, 1.0, 0.9}, {0.3, 1.0, 0.7}, {0.1, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.1, 1.0, 0.9}, {0.3, 1.0, 0.9}, {0.3, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.1, 1.0, 0.9}, {0.3, 1.0, 0.7}, {0.1, 1.0, 0.7}, {0.2, 0.0, -0.2}, {0.0, 0.0, -0.2}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.1, 1.0, 0.9}, {0.3, 1.0, 0.9}, {0.3, 1.0, 0.7}, {0.2, 0.0, 0.0}, {0.2, 0.0, -0.2}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Top of cube 1.
-            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.9}, {0.1, 0.8, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.7}, {0.3, 0.8, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.9}, {0.1, 0.8, 0.9}, {0.2, 0.0, 0.2}, {0.0, 0.0, 0.2}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.7}, {0.3, 0.8, 0.9}, {0.2, 0.0, 0.0}, {0.2, 0.0, 0.2}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Near side of cube 1.
-            {{0.1, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.1, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.1, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.1, 1.0, 0.7}, {0.2, 0.2, 0.0}, {0.0, 0.2, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.1, 0.8, 0.7}, {0.3, 0.8, 0.7}, {0.3, 1.0, 0.7}, {0.2, 0.0, 0.0}, {0.2, 0.2, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Far side of cube 1.
-            {{0.1, 0.8, 0.9}, {0.3, 1.0, 0.9}, {0.1, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
-            {{0.1, 0.8, 0.9}, {0.3, 0.8, 0.9}, {0.3, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 0.0, false},
+            {{0.1, 0.8, 0.9}, {0.3, 1.0, 0.9}, {0.1, 1.0, 0.9}, {0.0, 0.2, 0.0}, {0.0, 0.2, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.1, 0.8, 0.9}, {0.3, 0.8, 0.9}, {0.3, 1.0, 0.9}, {0.2, 0.0, 0.0}, {0.2, 0.2, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Left side of cube 2.
-            {{0.7, 0.8, 0.7}, {0.7, 1.0, 0.9}, {0.7, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.7, 0.8, 0.7}, {0.7, 0.8, 0.9}, {0.7, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.7, 0.8, 0.7}, {0.7, 1.0, 0.9}, {0.7, 1.0, 0.7}, {0.0, 0.2, 0.2}, {0.0, 0.2, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
+            {{0.7, 0.8, 0.7}, {0.7, 0.8, 0.9}, {0.7, 1.0, 0.9}, {0.0, 0.0, 0.2}, {0.0, 0.2, 0.2}, {-1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
             // Right side of cube 2.
-            {{0.9, 0.8, 0.9}, {0.9, 1.0, 0.7}, {0.9, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.9, 0.8, 0.9}, {0.9, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.9, 0.8, 0.9}, {0.9, 1.0, 0.7}, {0.9, 1.0, 0.9}, {0.0, 0.2, -0.2}, {0.0, 0.2, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
+            {{0.9, 0.8, 0.9}, {0.9, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.0, 0.0, -0.2}, {0.0, 0.2, -0.2}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.8, 0.8, 0.8}, false},
             // Bottom of cube 2.
-            {{0.7, 1.0, 0.9}, {0.9, 1.0, 0.7}, {0.7, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.7, 1.0, 0.9}, {0.9, 1.0, 0.9}, {0.9, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.7, 1.0, 0.9}, {0.9, 1.0, 0.7}, {0.7, 1.0, 0.7}, {0.2, 0.0, -0.2}, {0.0, 0.0, -0.2}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.7, 1.0, 0.9}, {0.9, 1.0, 0.9}, {0.9, 1.0, 0.7}, {0.2, 0.0, 0.0}, {0.2, 0.0, -0.2}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Top of cube 2.
-            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.9}, {0.7, 0.8, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.7}, {0.9, 0.8, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.9}, {0.7, 0.8, 0.9}, {0.2, 0.0, 0.2}, {0.0, 0.0, 0.2}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.7}, {0.9, 0.8, 0.9}, {0.2, 0.0, 0.0}, {0.2, 0.0, 0.2}, {0.0, -1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Near side of cube 2.
-            {{0.7, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.7, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
+            {{0.7, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.7, 1.0, 0.7}, {0.2, 0.2, 0.0}, {0.0, 0.2, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.7, 0.8, 0.7}, {0.9, 0.8, 0.7}, {0.9, 1.0, 0.7}, {0.2, 0.0, 0.0}, {0.2, 0.2, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
             // Far side of cube 2.
-            {{0.7, 0.8, 0.9}, {0.9, 1.0, 0.9}, {0.7, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false},
-            {{0.7, 0.8, 0.9}, {0.9, 0.8, 0.9}, {0.9, 1.0, 0.9}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.8, 0.8, 0.8}, 1.0, false}
+            {{0.7, 0.8, 0.9}, {0.9, 1.0, 0.9}, {0.7, 1.0, 0.9}, {0.2, 0.2, 0.0}, {0.0, 0.2, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            {{0.7, 0.8, 0.9}, {0.9, 0.8, 0.9}, {0.9, 1.0, 0.9}, {0.2, 0.0, 0.0}, {0.2, 0.2, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.8, 0.8, 0.8}, false},
+            // Ceiling light.
+            {{0.3, 1.0e-3, 0.3}, {0.7, 1.0e-3, 0.7}, {0.3, 1.0e-3, 0.7}, {0.4, 0.0, 0.4}, {0.0, 0.0, 0.4}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, true},
+            {{0.3, 1.0e-3, 0.3}, {0.7, 1.0e-3, 0.3}, {0.7, 1.0e-3, 0.7}, {0.4, 0.0, 0.0}, {0.4, 0.0, 0.4}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, true},
         };
-        for(int i = 0; i < 34; i++) {
-            sub_33(&triangles[i].node_1, &triangles[i].node_0, &triangles[i].e_1);
-            sub_33(&triangles[i].node_2, &triangles[i].node_0, &triangles[i].e_2);
-            set_basis_vectors(&triangles[i].t_3, &triangles[i].t_1, &triangles[i].t_2, &triangles[i].normal);
-        }
         int first_index = get_global_id(0)*3;
-        int spp = 10;
+        int spp = 50;
         float color_average[3] = {0.0, 0.0, 0.0};
         float y = ((float)(1000-get_global_id(0)/1000))/1000.0;
         float x = ((float)(1000-get_global_id(0)%1000))/1000.0;
         float pinhole[3] = {0.5, 0.5, -1.0};
         // Loop spp times and take the average color.
+        float ambient_color[3] = {0.1, 0.1, 0.1};
         for(int i = 0; i < spp; i++) {
-            float dr = next_float(&state)*0.0005;
-            float theta = next_float(&state)*2.0*M_PI;
+            float dr = 0.0;
+            next_float(&state, &dr);
+            dr *= 0.0005;
+            float theta = 0.0;
+            next_float(&state, &theta);
+            theta *= 2.0*M_PI;
             float dx = cos(theta)*dr;
             float dy = sin(theta)*dr;
             float point_on_retina[3] = {x+dx, y+dy, -2.0};
@@ -356,20 +281,22 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
             normalise_3(direction);
             struct ray r = {{pinhole[0], pinhole[1], pinhole[2]}, {direction[0], direction[1], direction[2]}};
             float color[3] = {1.0, 1.0, 1.0};
-            // Loop until we hit a light.
-            while(true) {
+            // Loop until we hit a light or the ray hits nothing.
+            for(int i = 0; i < 5; i++) {
                 float min_distance = FLT_MAX;
                 int closest_triangle_index = -1;
-                for(int j = 0; j < 34; j++) {
-                    float distance = triangle_ray_distance(&triangles[j], &r);
+                for(int j = 0; j < 36; j++) {
+                    float distance = 0.0;
+                    triangle_ray_distance(&triangles[j], &r, &distance);
                     if(distance < min_distance) {
                         min_distance = distance;
                         closest_triangle_index = j;
                     }
                 }
-                // @TODO: Breaking is most likely bad for GPUs. Investigate this and come up with
-                // a solution. 
                 if(closest_triangle_index == -1) {
+                    color_average[0] += color[0]*ambient_color[0];
+                    color_average[1] += color[1]*ambient_color[1];
+                    color_average[2] += color[2]*ambient_color[2];
                     break;
                 }
                 color[0] *= triangles[closest_triangle_index].color[0];
@@ -389,13 +316,7 @@ fn pixel_colors(outer_iteration: u64) -> Result<Vec<f32>> {
                 r.position[1] = position[1];
                 r.position[2] = position[2];
                 float direction[3] = {0.0, 0.0, 0.0};
-                float random = next_float(&state);
-                // @TODO: Branching is very bad for GPUs, so come up with a solution.
-                //if(random < triangles[closest_triangle_index].lambertian_probability) {
-                    lambertian_on_hemisphere(triangles[closest_triangle_index].normal, triangles[closest_triangle_index].t_3, triangles[closest_triangle_index].t_1, triangles[closest_triangle_index].t_2, direction, &state);
-                //} else {
-                //    specular_on_hemisphere(triangles[closest_triangle_index].normal, r.direction, direction);
-                //}
+                lambertian_on_hemisphere(triangles[closest_triangle_index].normal, triangles[closest_triangle_index].t_1, triangles[closest_triangle_index].t_2, direction, &state);
                 r.direction[0] = direction[0];
                 r.direction[1] = direction[1];
                 r.direction[2] = direction[2];
@@ -487,7 +408,7 @@ fn main() {
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations_wanted = 100;
+    let iterations_wanted = 10;
     let mut iterations = 0;
     // Not to risk having the OS kill the kernel (the code running on the GPU), it must not run
     // more than a few seconds. This is not enough to get an image with low variance, thus
@@ -512,7 +433,7 @@ fn main() {
     // When writing to file we want u8. Also, we want to avoid having dark pixels being too dark,
     // so we apply some gamma correction.
     let mut colors_for_drawing: Vec<u8> = Vec::new();
-    let gamma = 5.0;
+    let gamma = 10.0;
     for i in 0..1_000_000 {
         let r = colors_average[3*i];
         let g = colors_average[3*i+1];
