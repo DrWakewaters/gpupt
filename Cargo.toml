@@ -6,6 +6,7 @@ authors = ["Christian Carlsson <christian-carlsson@outlook.com>"]
 [dependencies]
 ocl = "*"
 png = "*"
+time = "*"
 
 [profile.release]
 opt-level = 3
