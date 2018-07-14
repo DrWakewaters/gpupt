@@ -98,11 +98,11 @@ Hitpoint compute_hitpoint(Ray ray) {
     }
     // The ray escaped the scene.
     if(closest_triangle_index == -1 && closest_sphere_index == -1) {
-        Hitpoint hitpoint = {{0.0, 0.0, 0.0, 0.0}, ray.direction, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, FLT_MAX, 0.0, false, false, false};
+        Hitpoint hitpoint = {{0.0, 0.0, 0.0, 0.0}, ray.direction, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, FLT_MAX, 0.0, 0.0, false, false, false, true};
         return hitpoint;
     }
     if(min_distance_triangle < min_distance_sphere) {
-        Hitpoint hitpoint = {ray.position+min_distance_triangle*ray.direction, ray.direction, triangles[closest_triangle_index].normal, triangles[closest_triangle_index].t_1, triangles[closest_triangle_index].t_2, triangles[closest_triangle_index].color, min_distance_triangle, triangles[closest_triangle_index].lambertian_probability, triangles[closest_triangle_index].is_opaque, triangles[closest_triangle_index].is_lightsource, true};
+        Hitpoint hitpoint = {ray.position+min_distance_triangle*ray.direction, ray.direction, triangles[closest_triangle_index].normal, triangles[closest_triangle_index].t_1, triangles[closest_triangle_index].t_2, triangles[closest_triangle_index].color, triangles[closest_triangle_index].emission, {0.0, 0.0, 0.0, 0.0}, min_distance_triangle, triangles[closest_triangle_index].lambertian_probability, triangles[closest_triangle_index].refractive_index, triangles[closest_triangle_index].is_opaque, triangles[closest_triangle_index].is_lightsource, true, true};
         return hitpoint;
     }
     float4 position = ray.position+min_distance_sphere*ray.direction;
@@ -110,6 +110,6 @@ Hitpoint compute_hitpoint(Ray ray) {
     float4 t_1 = {0.0, 0.0, 0.0, 0.0};
     float4 t_2 = {0.0, 0.0, 0.0, 0.0};
     compute_local_coordinate_system(normal, &t_1, &t_2);
-    Hitpoint hitpoint = {position, ray.direction, normal, t_1, t_2, spheres[closest_sphere_index].color, min_distance_sphere, spheres[closest_sphere_index].lambertian_probability, spheres[closest_sphere_index].is_opaque, spheres[closest_sphere_index].is_lightsource, true};
+    Hitpoint hitpoint = {position, ray.direction, normal, t_1, t_2, spheres[closest_sphere_index].color, spheres[closest_sphere_index].emission, {0.0, 0.0, 0.0, 0.0}, min_distance_sphere, spheres[closest_sphere_index].lambertian_probability, spheres[closest_sphere_index].refractive_index, spheres[closest_sphere_index].is_opaque, spheres[closest_sphere_index].is_lightsource, true, true};
     return hitpoint;
 }

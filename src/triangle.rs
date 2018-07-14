@@ -14,6 +14,7 @@ pub struct Triangle {
     t_1: [f32; 3],
     t_2: [f32; 3],
     color: [f32; 3],
+    emission: [f32; 3],
     lambertian_probability: f32,
     refractive_index: f32,
     is_opaque: bool,
@@ -42,6 +43,7 @@ impl Triangle {
             t_1,
             t_2,
             color: material.color,
+            emission: material.emission,
             lambertian_probability: material.lambertian_probability,
             refractive_index: material.refractive_index,
             is_opaque: material.is_opaque,
@@ -63,6 +65,7 @@ impl Display for Triangle {
         let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.t_1[0], self.t_1[1], self.t_1[2]));
         let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.t_2[0], self.t_2[1], self.t_2[2]));
         let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.color[0], self.color[1], self.color[2]));
+        let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.emission[0], self.emission[1], self.emission[2]));
         let _ = fmt.write_str(&format!("{:.9}, ", self.lambertian_probability));
         let _ = fmt.write_str(&format!("{:.9}, " , self.refractive_index));
         let _ = fmt.write_str(&format!("{}, ", self.is_opaque));

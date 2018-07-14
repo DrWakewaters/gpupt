@@ -3,11 +3,11 @@ use sphere::Sphere;
 use triangle::Triangle;
 
 pub fn create_scene() -> String {
-    let red_material = Material::new([0.8, 0.2, 0.2], 1.0, 1.0, true, false);
-    let green_material = Material::new([0.2, 0.8, 0.2], 1.0, 1.0, true, false);
-    let white_material = Material::new([0.8, 0.8, 0.8], 1.0, 1.0, true, false);
-    let metal_material = Material::new([0.8, 0.8, 0.8], 0.0, 1.0, true, false);
-    let white_light_material = Material::new([0.8, 0.8, 0.8], 1.0, 1.0, true, true);
+    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 1.0, 1.0, true, false);
+    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 1.0, 1.0, true, false);
+    let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 1.0, 1.0, true, false);
+    let metal_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 1.0, true, false);
+    let white_light_material = Material::new([0.8, 0.8, 0.8], [1.0, 1.0, 1.0], 1.0, 1.0, true, true);
 
     let mut scene = String::new();
 
