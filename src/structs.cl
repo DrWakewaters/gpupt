@@ -1,4 +1,4 @@
-struct triangle {
+typedef struct Triangle {
     float4 node_0;
     float4 node_1;
     float4 node_2;
@@ -11,20 +11,38 @@ struct triangle {
     float lambertian_probability;
     float refractive_index;
     bool is_opaque;
-    bool is_light;
-};
+    bool is_lightsource;
+} Triangle;
 
-struct sphere {
+typedef struct Sphere {
     float4 position;
     float radius;
     float4 color;
     float lambertian_probability;
     float refractive_index;
     bool is_opaque;
-    bool is_light;
-};
+    bool is_lightsource;
+} Sphere;
 
-struct ray {
+typedef struct Ray {
     float4 position;
     float4 direction;
-};
+} Ray;
+
+typedef struct Hitpoint {
+    float4 position;
+    float4 incoming_direction;
+    float4 normal;
+    float4 t_1;
+    float4 t_2;
+    float4 color;
+    float distance_from_previous;
+    float lambertian_probability;
+    //float refractive_index;
+    bool is_opaque;
+    bool is_lightsource;
+    bool hit_surface;
+    //bool hit_from_outside;
+    //bool is_end_point;
+    //float4 accumulated_color;
+} Hitpoint;

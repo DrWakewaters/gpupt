@@ -19,7 +19,7 @@ impl Parallelepiped {
             a,
             b,
             c,
-            material: material,
+            material,
         }
     }
 

@@ -40,7 +40,7 @@ fn get_opencl_info() {
         println!("Name: {:?}", platform.info(PlatformInfo::Name));
         println!("Vendor: {:?}", platform.info(PlatformInfo::Vendor));
         println!("Extensions: {:?}", platform.info(PlatformInfo::Extensions));
-        println!("");
+        println!();
         let devices = Device::list(platform, None);
         match devices {
             Ok(devices) => {
@@ -50,7 +50,7 @@ fn get_opencl_info() {
                     println!("name: {:?}", device.name());
                     println!("vendor: {:?}", device.vendor());
                     println!("all: {:?}", device.to_string());
-                    println!("");
+                    println!();
                 }
             }
             Err(err) => {
@@ -63,7 +63,6 @@ fn get_opencl_info() {
 #[allow(dead_code)]
 fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     let mut src = String::new();
-    // @TODO: include_str instead.
     src.push_str(include_str!("structs.cl"));
     src.push_str(include_str!("constants.cl"));
     src.push_str(scene);
@@ -74,7 +73,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     let platform = Platform::first()?; // @TODO: We should check all platforms.
     let devices = Device::list(platform, None)?;
     println!("Following opencl devices found.");
-    println!("");
+    println!();
     for (index, device) in devices.iter().enumerate() {
         let name = match device.name() {
             Ok(device_name) => {
@@ -86,7 +85,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
         };
         println!("{:?}: {:?}", index, name);
     }
-    println!("");
+    println!();
     let device_index: usize;
     loop {
         let mut index = String::new();
@@ -105,15 +104,15 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
         break;
     }
     let tm = now();
-    println!("Rendering starts at {}:{}:{}.{}. ", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_nsec/10_000_000);
     let mut colors_average: Vec<f32> = Vec::new();
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations = 500;
+    let iterations = 100;
     // Not to risk having the OS kill the kernel when running on a GPU, it must not run
     // more than a few seconds. This is not enough to get an image with low variance, thus
     // we run it several times and take the average.
+    println!("Rendering starts at {}:{}:{}.{}. ", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_nsec/10_000_000);
     for i in 0_u64..iterations {
         let context = Context::builder().build()?;
         let queue = Queue::new(&context, devices[device_index], None)?;
@@ -147,16 +146,16 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
             colors_average[i] += out_color;
         }
     }
-    for i in 0..3_000_000 {
-        colors_average[i] /= iterations as f32;
-    }
     let duration = now() - tm;
     println!("It took {}:{}:{}.{}.", duration.num_hours(), duration.num_minutes()%60, duration.num_seconds()%60, (duration.num_milliseconds()%1000)/10);
+    for color_average in &mut colors_average {
+        *color_average /= iterations as f32;
+    }
     Ok(colors_average)
 }
 
 #[allow(dead_code)]
-fn write_to_file(colors_for_drawing: Vec<u8>) -> std::io::Result<()> {
+fn write_to_file(colors_for_drawing: &[u8]) -> std::io::Result<()> {
     let mut current_directory = current_dir()?;
     current_directory.push("gpu.png");
     if let Some(image_filename) = current_directory.to_str() {
@@ -196,7 +195,7 @@ fn main() {
                 if b > max_intensity {
                     max_intensity = b;
                 }
-                let factor = if max_intensity > 1.0e-12 {
+                let factor = if max_intensity > 1e-12 {
                     let modified_max_intensity = (gamma*max_intensity).atan()/(PI/2.0);
                     modified_max_intensity/max_intensity
                 } else {
@@ -210,7 +209,7 @@ fn main() {
             // Write to file in the currect directory.
             let tm = now();
             println!("Writing to file starts at {}:{}:{}.{}. ", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_nsec/10_000_000);
-            let result = write_to_file(colors_for_drawing);
+            let result = write_to_file(&colors_for_drawing);
             match result {
                 Ok(()) => {
                     let duration = now() - tm;

@@ -26,15 +26,12 @@ impl Triangle {
         let e_1 = sub(node_1, node_0);
         let e_2 = sub(node_2, node_0);
         let normal = normalised(cross(sub(node_2, node_0), sub(node_1, node_0)));
-        let t_1: [f32; 3];
-        let t_2: [f32; 3];
-        if dot(normal, [1.0, 0.0, 0.0]).abs() > 0.1  {
-            t_1 = cross(normal, [0.0, 1.0, 0.0]);
-            t_2 = cross(normal, t_1);
+        let t_1 = if dot(normal, [1.0, 0.0, 0.0]).abs() > 0.1  {
+            cross(normal, [0.0, 1.0, 0.0])
         } else {
-            t_1 = cross(normal, [1.0, 0.0, 0.0]);
-            t_2 = cross(normal, t_1);
-        }
+            cross(normal, [1.0, 0.0, 0.0])
+        };
+        let t_2 = cross(normal, t_1);
         Self {
             node_0,
             node_1,
@@ -70,7 +67,7 @@ impl Display for Triangle {
         let _ = fmt.write_str(&format!("{:.9}, " , self.refractive_index));
         let _ = fmt.write_str(&format!("{}, ", self.is_opaque));
         let _ = fmt.write_str(&format!("{}", self.is_lightsource));
-        let _ = fmt.write_str(&format!("}}, "));
+        let _ = fmt.write_str(&"}, ");
         Ok(())
     }
 }

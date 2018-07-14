@@ -39,7 +39,7 @@ impl Display for Sphere {
         let _ = fmt.write_str(&format!("{:.9}, " , self.refractive_index));
         let _ = fmt.write_str(&format!("{}, ", self.is_opaque));
         let _ = fmt.write_str(&format!("{}", self.is_lightsource));
-        let _ = fmt.write_str(&format!("}}, "));
+        let _ = fmt.write_str(&"}, ");
         Ok(())
     }
 }
