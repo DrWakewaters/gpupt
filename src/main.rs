@@ -108,7 +108,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations = 100;
+    let iterations = 1000;
     // Not to risk having the OS kill the kernel when running on a GPU, it must not run
     // more than a few seconds. This is not enough to get an image with low variance, thus
     // we run it several times and take the average.
@@ -181,7 +181,7 @@ fn main() {
     // When writing to file we want u8. Also, we want to avoid having dark pixels being too dark,
     // so we apply some gamma correction.
     let mut colors_for_drawing: Vec<u8> = Vec::new();
-    let gamma = 20.0;
+    let gamma = 50.0;
     match colors {
         Ok(colors) => {
             for i in 0..1_000_000 {

@@ -11,7 +11,7 @@ pub struct Sphere {
     lambertian_probability: f32,
     refractive_index: f32,
     is_opaque: bool,
-    is_lightsource: bool,
+    pub is_lightsource: bool,
 }
 
 impl Sphere {
