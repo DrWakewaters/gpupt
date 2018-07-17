@@ -7,19 +7,13 @@ __kernel void compute_pixel_color(__global float *colors, unsigned long outer_it
     float4 color_average = {0.0, 0.0, 0.0, 0.0};
     float y = ((float)(1000-get_global_id(0)/1000))/1000.0;
     float x = ((float)(1000-get_global_id(0)%1000))/1000.0;
-    float4 pinhole = {0.5, 0.5, -1.0, 0.0};
+    Camera camera = {{0.0, 0.0, 1.0, 0.0}, {0.5, 0.5, 0.4, 0.0}, {0.5, 0.5, -1.0, 0.0}, 0.02};
     // Sample each pixel spp times and take the average.
     int spp = 20;
     bool direct_light_sampling = true;
     for(int i = 0; i < spp; i++) {
         // Create a ray. Its direction is slightly random, in part to get anti-aliasing.
-        float dr = next_float(&state)*0.0005;
-        float theta = next_float(&state)*2.0*M_PI;
-        float dx = cos(theta)*dr;
-        float dy = sin(theta)*dr;
-        float4 point_on_retina = {x+dx, y+dy, -2.0, 0.0};
-        float4 direction = normalize(pinhole - point_on_retina);
-        Ray ray = {pinhole, direction};
+        Ray ray = create_ray(x, y, camera, &state);
         // Just so that we can extract accumulated_color and give it to compute_hitpoint(...).
         Hitpoint hitpoint = {{0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {1.0, 1.0, 1.0, 0.0}, 0.0, 0.0, 0.0, 0.0, false, false, false, true};
         while(true) {

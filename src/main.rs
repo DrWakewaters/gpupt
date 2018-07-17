@@ -108,8 +108,8 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations = 1000;
-    let number_of_prints = 10;
+    let iterations = 30_000;
+    let number_of_prints = 100;
     let print_at = if iterations/number_of_prints > 0 {
         iterations/number_of_prints
     } else {

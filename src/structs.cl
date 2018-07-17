@@ -51,3 +51,10 @@ typedef struct Hitpoint {
     bool hit_surface;
     bool hit_from_outside;
 } Hitpoint;
+
+typedef struct Camera {
+    float4 retina_normal;
+    float4 point_on_focal_plane;
+    float4 pinhole;
+    float pinhole_radius;
+} Camera;

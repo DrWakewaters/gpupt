@@ -1,4 +1,4 @@
-// HELPER FUNCTIONS
+// OTHER FUNCTIONS
 
 // Given a normalised vector, compute an ON basis where this vector is a basis vector.
 void compute_local_coordinate_system(float4 normal, float4 *restrict t_1, float4 *restrict t_2) {
@@ -13,6 +13,20 @@ void compute_local_coordinate_system(float4 normal, float4 *restrict t_1, float4
     *t_2 = normalize(cross(normal, *t_1));
 }
 
+Ray create_ray(float x, float y, Camera camera, unsigned long *restrict state) {
+    float dr = next_float(state)*0.0005;
+    float theta = next_float(state)*2.0*M_PI;
+    float dx = cos(theta)*dr;
+    float dy = sin(theta)*dr;
+    float4 point_on_retina = {x+dx, y+dy, -2.0, 0.0};
+    float4 direction = normalize(camera.pinhole - point_on_retina);
+    float distance_to_focal_plane = dot((camera.point_on_focal_plane-camera.pinhole), camera.retina_normal)/dot(direction, camera.retina_normal);
+    float4 point_on_focal_plane = camera.pinhole + (distance_to_focal_plane*direction);
+    float4 pinhole_translation = {camera.pinhole_radius*next_float(state), camera.pinhole_radius*next_float(state), 0.0, 0.0};
+    float4 point_on_lens = camera.pinhole+pinhole_translation;
+    direction = normalize(point_on_focal_plane-point_on_lens);
+    return (Ray){point_on_lens, direction};
+}
 
 
 // RAY-SURFACE INTERSECTION DETECTION

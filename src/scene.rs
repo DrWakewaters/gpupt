@@ -3,9 +3,9 @@ use sphere::Sphere;
 use triangle::Triangle;
 
 pub fn create_scene() -> String {
-    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
+    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
+    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
+    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
     let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
     let white_glossy_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.95, 0.05, 1.0, true, false);
     let metal_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.05, 1.0, true, false);
@@ -62,9 +62,9 @@ pub fn create_scene() -> String {
         spheres.push(Sphere::new([0.75, 0.93, 0.37], 0.07, &white_material));
         spheres.push(Sphere::new([1.0, 0.93, 0.37], 0.07, &green_material));
         // Top row.
-        spheres.push(Sphere::new([-0.2, 0.2, 0.37], 0.08, &white_material));
-        spheres.push(Sphere::new([0.5, 0.2, 0.37], 0.08, &white_material));
-        spheres.push(Sphere::new([1.2, 0.2, 0.37], 0.08, &white_material));
+        spheres.push(Sphere::new([-0.2, 0.2, 0.43], 0.08, &white_material));
+        spheres.push(Sphere::new([0.5, 0.2, 0.43], 0.08, &white_material));
+        spheres.push(Sphere::new([1.2, 0.2, 0.43], 0.08, &white_material));
         // Lightsource.
         spheres.push(Sphere::new([-1.0, -1.0, 0.5], 0.5, &white_light_material));
     }
