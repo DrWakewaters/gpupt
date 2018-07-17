@@ -16,6 +16,7 @@ pub struct Triangle {
     color: [f32; 3],
     emission: [f32; 3],
     lambertian_probability: f32,
+    maximum_specular_angle: f32,
     refractive_index: f32,
     is_opaque: bool,
     pub is_lightsource: bool,
@@ -45,6 +46,7 @@ impl Triangle {
             color: material.color,
             emission: material.emission,
             lambertian_probability: material.lambertian_probability,
+            maximum_specular_angle: material.maximum_specular_angle,
             refractive_index: material.refractive_index,
             is_opaque: material.is_opaque,
             is_lightsource: material.is_lightsource,
@@ -67,6 +69,7 @@ impl Display for Triangle {
         let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.color[0], self.color[1], self.color[2]));
         let _ = fmt.write_str(&format!("{{{:.9}, {:.9}, {:.9}, 0.0}}, ", self.emission[0], self.emission[1], self.emission[2]));
         let _ = fmt.write_str(&format!("{:.9}, ", self.lambertian_probability));
+        let _ = fmt.write_str(&format!("{:.9}, ", self.maximum_specular_angle));
         let _ = fmt.write_str(&format!("{:.9}, " , self.refractive_index));
         let _ = fmt.write_str(&format!("{}, ", self.is_opaque));
         let _ = fmt.write_str(&format!("{}", self.is_lightsource));

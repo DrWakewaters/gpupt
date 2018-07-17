@@ -109,11 +109,20 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
         colors_average.push(0.0);
     }
     let iterations = 1000;
+    let number_of_prints = 10;
+    let print_at = if iterations/number_of_prints > 0 {
+        iterations/number_of_prints
+    } else {
+        1
+    };
     // Not to risk having the OS kill the kernel when running on a GPU, it must not run
     // more than a few seconds. This is not enough to get an image with low variance, thus
     // we run it several times and take the average.
     println!("Rendering starts at {}:{}:{}.{}. ", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_nsec/10_000_000);
     for i in 0_u64..iterations {
+        if i%print_at == 0 {
+            println!("Iteration {}/{}.", i, iterations);
+        }
         let context = Context::builder().build()?;
         let queue = Queue::new(&context, devices[device_index], None)?;
         let program = Program::builder()

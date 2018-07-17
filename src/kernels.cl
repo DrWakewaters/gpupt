@@ -21,7 +21,7 @@ __kernel void compute_pixel_color(__global float *colors, unsigned long outer_it
         float4 direction = normalize(pinhole - point_on_retina);
         Ray ray = {pinhole, direction};
         // Just so that we can extract accumulated_color and give it to compute_hitpoint(...).
-        Hitpoint hitpoint = {{0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {1.0, 1.0, 1.0, 0.0}, 0.0, 0.0, 0.0, false, false, false, true};
+        Hitpoint hitpoint = {{0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {1.0, 1.0, 1.0, 0.0}, 0.0, 0.0, 0.0, 0.0, false, false, false, true};
         while(true) {
             // Find the closest hitpoint.
             hitpoint = compute_hitpoint(ray, hitpoint.accumulated_color);
@@ -35,6 +35,8 @@ __kernel void compute_pixel_color(__global float *colors, unsigned long outer_it
             // or does the ray just continue travelling until it randomly
             // hits a lightsource?
             // The latter will not work if the lightsource is small or far away.
+            // The former does currently not work with light that goes directly
+            // from light to eye - at least one bounce is needed.
             if(direct_light_sampling) {
                 color_average += compute_direct_light(ray, hitpoint, &state);
             } else {
@@ -45,12 +47,7 @@ __kernel void compute_pixel_color(__global float *colors, unsigned long outer_it
                 }
             }
             // Update the direction of the ray.
-            float random_lambertian = next_float(&state);
-            if(random_lambertian < hitpoint.lambertian_probability) {
-                ray.direction = lambertian_on_hemisphere(hitpoint.normal, hitpoint.t_1, hitpoint.t_2, &state);
-            } else {
-                ray.direction = specular_on_hemisphere(hitpoint.normal, ray.direction);
-            }
+            ray.direction = sample_brdf(hitpoint, ray, &state);
         }
     }
     colors[first_index] = color_average.x/((float)spp);
