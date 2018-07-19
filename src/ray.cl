@@ -128,8 +128,6 @@ float4 compute_direct_light(Ray ray, Hitpoint hitpoint, unsigned long *restrict 
     return brdf;
 }
 
-
-
 float4 compute_direct_light_inner(Hitpoint hitpoint, float4 light_color, float4 light_normal, float4 light_position, float lambertian_probability, float maximum_specular_angle, bool is_opaque) {
     float4 zero = {0.0, 0.0, 0.0, 0.0};
     float distance_to_light = length(light_position-hitpoint.position);
@@ -162,7 +160,7 @@ float4 compute_direct_light_inner(Hitpoint hitpoint, float4 light_color, float4 
     }
     float brdf = compute_brdf(incoming_direction, direction_to_light, normal, refractive_index_1, refractive_index_2, lambertian_probability, maximum_specular_angle, is_opaque);
 
-    // @TODO: This assumes a lambertian lightsource. Support general lightsources.
+    // @TODO: This assumes a lambertian lightsource. Should support general lightsources in the future.
     float brdf_lightsource = 2.0f*dot(-1.0f*direction_to_light, light_normal);
     return (brdf*brdf_lightsource/(distance_to_light*distance_to_light))*(hitpoint.accumulated_color*light_color);
 }

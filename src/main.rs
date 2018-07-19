@@ -70,8 +70,10 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     src.push_str(include_str!("ray.cl"));
     src.push_str(include_str!("pcg.cl"));
     src.push_str(include_str!("kernels.cl"));
-    let platform = Platform::first()?; // @TODO: We should check all platforms.
-    let devices = Device::list(platform, None)?;
+    //let platform = Platform::first()?; // @TODO: We should check all platforms.
+    //let devices = Device::list(platform, None)?;
+    let context = Context::builder().build()?;
+    let devices = context.devices();
     println!("Following opencl devices found.");
     println!();
     for (index, device) in devices.iter().enumerate() {
@@ -80,7 +82,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
                 device_name
             }
             Err(_) => {
-                String::from("Unknown device")
+                String::from("unknown device")
             }
         };
         println!("{:?}: {:?}", index, name);

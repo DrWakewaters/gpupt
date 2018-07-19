@@ -1,6 +1,6 @@
 // Other functions.
 void compute_local_coordinate_system(float4 normal, float4 *restrict t_1, float4 *restrict t_2);
-Ray create_ray(float x, float y, unsigned long *restrict state);
+Ray create_ray(float x, float y, Camera camera, unsigned long *restrict state);
 
 // Random numbers.
 unsigned int next_uint(unsigned long *restrict state);

@@ -3,9 +3,9 @@ use sphere::Sphere;
 use triangle::Triangle;
 
 pub fn create_scene() -> String {
-    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
-    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
-    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 0.8, 0.5, 1.0, true, false);
+    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
+    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
+    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
     let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
     let white_glossy_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.95, 0.05, 1.0, true, false);
     let metal_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.05, 1.0, true, false);
