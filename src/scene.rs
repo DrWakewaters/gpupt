@@ -3,13 +3,11 @@ use sphere::Sphere;
 use triangle::Triangle;
 
 pub fn create_scene() -> String {
-    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 1.0, 0.0, 1.0, true, false);
-    let white_glossy_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.95, 0.05, 1.0, true, false);
-    let metal_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.05, 1.0, true, false);
-    let white_light_material = Material::new([0.8, 0.8, 0.8], [1.0, 1.0, 1.0], 1.0, 0.0, 1.0, true, true);
+    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let white_light_material = Material::new([0.8, 0.8, 0.8], [1.0, 1.0, 1.0], 0.0, 0.0, 1.0, true, true);
 
     let mut scene = String::new();
     let mut triangles: Vec<Triangle> = Vec::new();
@@ -53,8 +51,8 @@ pub fn create_scene() -> String {
         triangles.push(Triangle::new([0.0, -1.0, 0.0], [1.0, -1.0, 0.0], [1.0, -1.0, 1.0], &white_material));
         // Middle row.
         spheres.push(Sphere::new([0.0, 0.84, 0.6], 0.16, &white_material));
-        spheres.push(Sphere::new([0.5, 0.84, 0.6], 0.16, &white_glossy_material));
-        spheres.push(Sphere::new([1.0, 0.84, 0.6], 0.16, &metal_material));
+        spheres.push(Sphere::new([0.5, 0.84, 0.6], 0.16, &white_material));
+        spheres.push(Sphere::new([1.0, 0.84, 0.6], 0.16, &white_material));
         // Front row.
         spheres.push(Sphere::new([0.0, 0.93, 0.37], 0.07, &red_material));
         spheres.push(Sphere::new([0.25, 0.93, 0.37], 0.07, &white_material));

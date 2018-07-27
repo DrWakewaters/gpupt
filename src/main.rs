@@ -110,7 +110,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations = 30_000;
+    let iterations = 40;
     let number_of_prints = 100;
     let print_at = if iterations/number_of_prints > 0 {
         iterations/number_of_prints
@@ -192,7 +192,7 @@ fn main() {
     // When writing to file we want u8. Also, we want to avoid having dark pixels being too dark,
     // so we apply some gamma correction.
     let mut colors_for_drawing: Vec<u8> = Vec::new();
-    let gamma = 50.0;
+    let gamma = 300.0;
     match colors {
         Ok(colors) => {
             for i in 0..1_000_000 {

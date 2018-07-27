@@ -16,21 +16,19 @@ float sphere_ray_distance(int sphere_index, Ray ray);
 bool point_in_triangle(float4 point, float4 node_0, float4 node_1, float4 node_2);
 bool same_side(float4 test_point, float4 point_inside, float4 first_node, float4 second_node);
 
-// Compute direct light.
-float4 compute_direct_light(Ray ray, Hitpoint hitpoint, unsigned long *restrict state);
-float4 compute_direct_light_inner(Hitpoint hitpoint, float4 light_color, float4 light_normal, float4 light_position, float lambertian_probability, float maximum_specular_angle, bool is_opaque);
-Hitpoint compute_hitpoint(Ray ray, float4 accumulated_color);
+// Update.
+void update(Ray *ray, Hitpoint *hitpoint, unsigned long *restrict state);
 
-// Random points on surfaces.
-float4 random_on_triangle(unsigned int triangle_index, unsigned long *restrict state);
-float4 random_on_sphere(unsigned int sphere_index, unsigned long *restrict state);
+// Sampling.
+float4 sample_uniform_on_triangle(unsigned int triangle_index, unsigned long *restrict state);
+float4 sample_uniform_on_sphere(unsigned long *restrict state);
+float4 sample_uniform_on_hemisphere(float4 normal, unsigned long *restrict state);
+float4 sample_cos_weighted_on_hemisphere(float4 normal, float4 t_1, float4 t_2, unsigned long *restrict state);
+float4 sample_cone(float4 direction, float maximum_angle, unsigned long *restrict state);
+float4 sample_cone_fast(float4 direction, float4 t_1, float4 t_2, float maximum_angle, unsigned long *restrict state);
+float4 sample(float4 position, float4 incoming_direction, float4 normal, float4 t_1, float4 t_2, float maximum_specular_angle, float specular_reflection_probability, bool *may_sample_cone, unsigned long *restrict state);
 
-// Sample brdf.
-float4 sample_brdf(Hitpoint hitpoint, Ray ray, unsigned long *restrict state);
-float4 sample_brdf_lambertian(float4 normal, float4 t_1, float4 t_2, unsigned long *restrict state);
-float4 sample_brdf_specular(float4 normal, float4 incoming_direction, float maximum_specular_angle, unsigned long *restrict state);
-
-// Compute brdf.
-float compute_brdf(float4 incoming_direction, float4 outgoing_direction, float4 normal, float refractive_index_1, float refractive_index_2, float lambertian_probability, float maximum_specular_angle, bool is_opaque);
-float compute_brdf_lambertian(float4 outgoing_direction, float4 normal);
-float compute_brdf_specular(float4 incoming_direction, float4 outgoing_direction, float4 normal, float maximum_specular_angle);
+// Color modification due to the sampling.
+float color_modifier(float4 position, float4 incoming_direction, float4 outgoing_direction, float4 normal, bool may_sample_cone);
+float cos_weighted_probability_density(float4 outgoing_direction, float4 normal);
+float cone_probability_density(float4 direction_to_light_center, float4 outgoing_direction, float maximum_angle);

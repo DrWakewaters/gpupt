@@ -9,7 +9,7 @@ typedef struct Triangle {
     float4 t_2;
     float4 color;
     float4 emission;
-    float lambertian_probability;
+    float specular_reflection_probability;
     float maximum_specular_angle;
     float refractive_index;
     bool is_opaque;
@@ -21,7 +21,7 @@ typedef struct Sphere {
     float radius;
     float4 color;
     float4 emission;
-    float lambertian_probability;
+    float specular_reflection_probability;
     float maximum_specular_angle;
     float refractive_index;
     bool is_opaque;
@@ -43,7 +43,7 @@ typedef struct Hitpoint {
     float4 emission;
     float4 accumulated_color;
     float distance_from_previous;
-    float lambertian_probability;
+    float specular_reflection_probability;
     float maximum_specular_angle;
     float refractive_index;
     bool is_opaque;

@@ -4,3 +4,4 @@
 
 __constant unsigned long multiplier = 6364136223846793005u;
 __constant unsigned long increment = 1442695040888963407u;
+__constant float light_sampling_probability = 0.3;
