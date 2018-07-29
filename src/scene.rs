@@ -3,11 +3,13 @@ use sphere::Sphere;
 use triangle::Triangle;
 
 pub fn create_scene() -> String {
-    let red_material = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
-    let green_material = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
-    let blue_material = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
-    let white_material = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
-    let white_light_material = Material::new([0.8, 0.8, 0.8], [1.0, 1.0, 1.0], 0.0, 0.0, 1.0, true, true);
+    let red = Material::new([0.8, 0.2, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let green = Material::new([0.2, 0.8, 0.2], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let blue = Material::new([0.2, 0.2, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let white = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.0, 0.0, 1.0, true, false);
+    let white_glossy = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.1, 0.05, 1.0, true, false);
+    let metal = Material::new([0.8, 0.8, 0.8], [0.0, 0.0, 0.0], 0.999, 0.05, 1.0, true, false);
+    let white_light = Material::new([0.8, 0.8, 0.8], [1.0, 1.0, 1.0], 0.0, 0.0, 1.0, true, true);
 
     let mut scene = String::new();
     let mut triangles: Vec<Triangle> = Vec::new();
@@ -16,55 +18,55 @@ pub fn create_scene() -> String {
     let cornell = false;
     if cornell {
         // Left wall.
-        triangles.push(Triangle::new([0.0, 0.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0], &red_material));
-        triangles.push(Triangle::new([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], &red_material));
+        triangles.push(Triangle::new([0.0, 0.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0], &red));
+        triangles.push(Triangle::new([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], &red));
         // Right wall.
-        triangles.push(Triangle::new([1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], &green_material));
-        triangles.push(Triangle::new([1.0, 0.0, 1.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], &green_material));
+        triangles.push(Triangle::new([1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], &green));
+        triangles.push(Triangle::new([1.0, 0.0, 1.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], &green));
         // Floor.
-        triangles.push(Triangle::new([0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], &white_material));
-        triangles.push(Triangle::new([0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.0], &white_material));
+        triangles.push(Triangle::new([0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], &white));
+        triangles.push(Triangle::new([0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.0], &white));
         // Ceiling.
-        triangles.push(Triangle::new([0.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], &white_material));
-        triangles.push(Triangle::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], &white_material));
+        triangles.push(Triangle::new([0.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0], &white));
+        triangles.push(Triangle::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], &white));
         // Far wall.
-        triangles.push(Triangle::new([0.0, 0.0, 1.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0], &white_material));
-        triangles.push(Triangle::new([0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 1.0], &white_material));
+        triangles.push(Triangle::new([0.0, 0.0, 1.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0], &white));
+        triangles.push(Triangle::new([0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 1.0], &white));
         // Ceiling light.
-        triangles.push(Triangle::new([0.2, 1e-3, 0.2], [0.8, 1e-3, 0.8], [0.2, 1e-3, 0.8], &white_light_material));
-        triangles.push(Triangle::new([0.2, 1e-3, 0.2], [0.8, 1e-3, 0.2], [0.8, 1e-3, 0.8], &white_light_material));
+        triangles.push(Triangle::new([0.2, 1e-3, 0.2], [0.8, 1e-3, 0.8], [0.2, 1e-3, 0.8], &white_light));
+        triangles.push(Triangle::new([0.2, 1e-3, 0.2], [0.8, 1e-3, 0.2], [0.8, 1e-3, 0.8], &white_light));
     } else {
         // Left wall.
-        triangles.push(Triangle::new([-0.6, 0.5, -1.5], [-0.6, 1.0, 0.5], [-0.6, 1.0, -1.5], &white_material));
-        triangles.push(Triangle::new([-0.6, 0.5, -1.5], [-0.6, 0.5, 0.5], [-0.6, 1.0, 0.5], &white_material));
+        triangles.push(Triangle::new([-0.6, 0.5, -1.5], [-0.6, 1.0, 0.5], [-0.6, 1.0, -1.5], &white));
+        triangles.push(Triangle::new([-0.6, 0.5, -1.5], [-0.6, 0.5, 0.5], [-0.6, 1.0, 0.5], &white));
         // Right wall.
-        triangles.push(Triangle::new([1.6, 0.5, 0.5], [1.6, 1.0, -1.5], [1.6, 1.0, 0.5], &white_material));
-        triangles.push(Triangle::new([1.6, 0.5, 0.5], [1.6, 0.5, -1.5], [1.66, 1.0, -1.5], &white_material));
+        triangles.push(Triangle::new([1.6, 0.5, 0.5], [1.6, 1.0, -1.5], [1.6, 1.0, 0.5], &white));
+        triangles.push(Triangle::new([1.6, 0.5, 0.5], [1.6, 0.5, -1.5], [1.66, 1.0, -1.5], &white));
         // Far wall.
-        triangles.push(Triangle::new([-0.6, -0.6, 1.0], [1.6, 1.0, 1.0], [-0.6, 1.0, 1.0], &white_material));
-        triangles.push(Triangle::new([-0.6, -0.6, 1.0], [1.6, -0.6, 1.0], [1.6, 1.0, 1.0], &white_material));
+        triangles.push(Triangle::new([-0.6, -0.6, 1.0], [1.6, 1.0, 1.0], [-0.6, 1.0, 1.0], &white));
+        triangles.push(Triangle::new([-0.6, -0.6, 1.0], [1.6, -0.6, 1.0], [1.6, 1.0, 1.0], &white));
         // Floor.
-        triangles.push(Triangle::new([-0.6, 1.0, 1.0], [1.6, 1.0, -2.5], [-0.6, 1.0, -2.5], &white_material));
-        triangles.push(Triangle::new([-0.6, 1.0, 1.0], [1.6, 1.0, 1.0], [1.6, 1.0, -2.5], &white_material));
+        triangles.push(Triangle::new([-0.6, 1.0, 1.0], [1.6, 1.0, -2.5], [-0.6, 1.0, -2.5], &white));
+        triangles.push(Triangle::new([-0.6, 1.0, 1.0], [1.6, 1.0, 1.0], [1.6, 1.0, -2.5], &white));
         // Ceiling.
-        triangles.push(Triangle::new([0.0, -1.0, 0.0], [1.0, -1.0, 1.0], [0.0, -1.0, 1.0], &white_material));
-        triangles.push(Triangle::new([0.0, -1.0, 0.0], [1.0, -1.0, 0.0], [1.0, -1.0, 1.0], &white_material));
+        triangles.push(Triangle::new([0.0, -1.0, 0.0], [1.0, -1.0, 1.0], [0.0, -1.0, 1.0], &white));
+        triangles.push(Triangle::new([0.0, -1.0, 0.0], [1.0, -1.0, 0.0], [1.0, -1.0, 1.0], &white));
         // Middle row.
-        spheres.push(Sphere::new([0.0, 0.84, 0.6], 0.16, &white_material));
-        spheres.push(Sphere::new([0.5, 0.84, 0.6], 0.16, &white_material));
-        spheres.push(Sphere::new([1.0, 0.84, 0.6], 0.16, &white_material));
+        spheres.push(Sphere::new([0.0, 0.84, 0.6], 0.16, &white));
+        spheres.push(Sphere::new([0.5, 0.84, 0.6], 0.16, &white_glossy));
+        spheres.push(Sphere::new([1.0, 0.84, 0.6], 0.16, &metal));
         // Front row.
-        spheres.push(Sphere::new([0.0, 0.93, 0.37], 0.07, &red_material));
-        spheres.push(Sphere::new([0.25, 0.93, 0.37], 0.07, &white_material));
-        spheres.push(Sphere::new([0.5, 0.93, 0.37], 0.07, &blue_material));
-        spheres.push(Sphere::new([0.75, 0.93, 0.37], 0.07, &white_material));
-        spheres.push(Sphere::new([1.0, 0.93, 0.37], 0.07, &green_material));
+        spheres.push(Sphere::new([0.0, 0.93, 0.37], 0.07, &red));
+        spheres.push(Sphere::new([0.25, 0.93, 0.37], 0.07, &white));
+        spheres.push(Sphere::new([0.5, 0.93, 0.37], 0.07, &blue));
+        spheres.push(Sphere::new([0.75, 0.93, 0.37], 0.07, &white));
+        spheres.push(Sphere::new([1.0, 0.93, 0.37], 0.07, &green));
         // Top row.
-        spheres.push(Sphere::new([-0.2, 0.2, 0.43], 0.08, &white_material));
-        spheres.push(Sphere::new([0.5, 0.2, 0.43], 0.08, &white_material));
-        spheres.push(Sphere::new([1.2, 0.2, 0.43], 0.08, &white_material));
+        spheres.push(Sphere::new([-0.2, 0.2, 0.43], 0.08, &white));
+        spheres.push(Sphere::new([0.5, 0.2, 0.43], 0.08, &white));
+        spheres.push(Sphere::new([1.2, 0.2, 0.43], 0.08, &white));
         // Lightsource.
-        spheres.push(Sphere::new([-1.0, -1.0, 0.5], 0.5, &white_light_material));
+        spheres.push(Sphere::new([-1.0, -1.0, 0.5], 0.5, &white_light));
     }
 
     // Create an opencl array with the triangles and an array with the indices

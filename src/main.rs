@@ -110,7 +110,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     for _ in 0..3_000_000 {
         colors_average.push(0.0);
     }
-    let iterations = 40;
+    let iterations = 10;
     let number_of_prints = 100;
     let print_at = if iterations/number_of_prints > 0 {
         iterations/number_of_prints
@@ -123,7 +123,7 @@ fn pixel_colors(scene: &str) -> ocl::error::Result<Vec<f32>> {
     println!("Rendering starts at {}:{}:{}.{}. ", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_nsec/10_000_000);
     for i in 0_u64..iterations {
         if i%print_at == 0 {
-            println!("Iteration {}/{}.", i, iterations);
+            println!("Iteration {}/{}.", i+1, iterations);
         }
         let context = Context::builder().build()?;
         let queue = Queue::new(&context, devices[device_index], None)?;

@@ -127,8 +127,7 @@ void update(Ray *ray, Hitpoint *hitpoint, unsigned long *restrict state) {
         if(!triangles[closest_triangle_index].is_lightsource) {
             bool may_sample_cone = false;
             ray->direction = sample(ray->position, hitpoint->incoming_direction, hitpoint->normal, hitpoint->t_1, hitpoint->t_2, hitpoint->maximum_specular_angle, hitpoint->specular_reflection_probability, &may_sample_cone, state);
-            hitpoint->accumulated_color *= color_modifier(ray->position, hitpoint->incoming_direction, ray->direction, hitpoint->normal, may_sample_cone);
-
+            hitpoint->accumulated_color *= color_modifier(ray->position, hitpoint->incoming_direction, ray->direction, hitpoint->normal, hitpoint->specular_reflection_probability, hitpoint->maximum_specular_angle, may_sample_cone);
         }
     } else {
         ray->position = ray->position+min_distance_sphere*ray->direction;
@@ -140,8 +139,7 @@ void update(Ray *ray, Hitpoint *hitpoint, unsigned long *restrict state) {
         if(!spheres[closest_sphere_index].is_lightsource) {
             bool may_sample_cone = false;
             ray->direction = sample(ray->position, hitpoint->incoming_direction, hitpoint->normal, hitpoint->t_1, hitpoint->t_2, hitpoint->maximum_specular_angle, hitpoint->specular_reflection_probability, &may_sample_cone, state);
-            hitpoint->accumulated_color *= color_modifier(ray->position, hitpoint->incoming_direction, ray->direction, hitpoint->normal, may_sample_cone);
-
+            hitpoint->accumulated_color *= color_modifier(ray->position, hitpoint->incoming_direction, ray->direction, hitpoint->normal, hitpoint->specular_reflection_probability, hitpoint->maximum_specular_angle, may_sample_cone);
         }
     }
 }
@@ -243,16 +241,20 @@ float4 sample(float4 position, float4 incoming_direction, float4 normal, float4 
     float random_sample_cone = next_float(state);
     float random_sample_specular = next_float(state);
     if(random_sample_cone < light_sampling_probability && *may_sample_cone) {
-        float4 t_1_cone = {0.0f, 0.0f, 0.0f, 0.0f};
-        float4 t_2_cone = {0.0f, 0.0f, 0.0f, 0.0f};
-        compute_local_coordinate_system(direction_to_light_center_normalized, &t_1_cone, &t_2_cone);
-        return sample_cone_fast(direction_to_light_center_normalized, t_1_cone, t_2_cone, angle, state);
+        float4 t_1_cone_light = {0.0f, 0.0f, 0.0f, 0.0f};
+        float4 t_2_cone_light = {0.0f, 0.0f, 0.0f, 0.0f};
+        compute_local_coordinate_system(direction_to_light_center_normalized, &t_1_cone_light, &t_2_cone_light);
+        return sample_cone_fast(direction_to_light_center_normalized, t_1_cone_light, t_2_cone_light, angle, state);
     } else if(random_sample_specular < specular_reflection_probability) {
-        // @TODO: Implement specular reflection.
-        return (float4){1.0f, 1.0f, 1.0f, 1.0f};
+        float4 t_1_cone_specular = {0.0f, 0.0f, 0.0f, 0.0f};
+        float4 t_2_cone_specular = {0.0f, 0.0f, 0.0f, 0.0f};
+        float4 specular_direction = normalize(incoming_direction-2.0f*dot(incoming_direction, normal)*normal);
+        float angle_from_surface = M_PI/2.0f - acos(dot(normal, specular_direction));
+        float maximum_angle = fmin(angle_from_surface, maximum_specular_angle);
+        compute_local_coordinate_system(specular_direction, &t_1_cone_specular, &t_2_cone_specular);
+        return sample_cone_fast(specular_direction, t_1_cone_specular, t_2_cone_specular, maximum_angle, state);
     } else {
         return sample_cos_weighted_on_hemisphere(normal, t_1, t_2, state);
-        //return sample_uniform_on_hemisphere(normal, state);
     }
 }
 
@@ -260,22 +262,26 @@ float4 sample(float4 position, float4 incoming_direction, float4 normal, float4 
 // COLOR MODIFICATION DUE TO THE SAMPLING
 
 // @TODO: Implement transmission. Implement specular reflection.
-float color_modifier(float4 position, float4 incoming_direction, float4 outgoing_direction, float4 normal, bool may_sample_cone) {
+float color_modifier(float4 position, float4 incoming_direction, float4 outgoing_direction, float4 normal, float specular_reflection_probability, float maximum_specular_angle, bool may_sample_cone) {
     float4 direction_to_light_center = spheres[sphere_lightsource_indices[0]].position - position;
     float light_radius = spheres[sphere_lightsource_indices[0]].radius;
     float distance_to_light_center = length(direction_to_light_center);
-    float angle = atan(light_radius/distance_to_light_center);
+    float maximum_angle_light = atan(light_radius/distance_to_light_center);
     float out_normal = dot(outgoing_direction, normal);
     if(out_normal > 0.0f) {
         if(may_sample_cone) {
             float brdf_lambertian = cos_weighted_probability_density(outgoing_direction, normal);
-            float brdf_cone = cone_probability_density(normalize(direction_to_light_center), outgoing_direction, angle);
-            return brdf_lambertian/((1.0f-light_sampling_probability)*brdf_lambertian + light_sampling_probability*brdf_cone);
-            //float brdf_uniform = 1.0f;
-            //return brdf_lambertian/(0.5f*brdf_uniform + 0.5f*brdf_cone);
+            float brdf_cone_light = cone_probability_density(normalize(direction_to_light_center), outgoing_direction, maximum_angle_light);
+            float4 specular_direction = normalize(incoming_direction-2.0f*dot(incoming_direction, normal)*normal);
+            float angle_from_surface = M_PI/2.0f - acos(dot(normal, specular_direction));
+            float maximum_angle_specular = fmin(angle_from_surface, maximum_specular_angle);
+            float brdf_cone_specular = cone_probability_density(specular_direction, outgoing_direction, maximum_angle_specular);
+            float numerator = (1.0f-specular_reflection_probability)*brdf_lambertian + specular_reflection_probability*brdf_cone_specular;
+            float denominator = (1.0f-light_sampling_probability)*(1.0f-specular_reflection_probability)*brdf_lambertian + (1.0f-light_sampling_probability)*specular_reflection_probability*brdf_cone_specular + light_sampling_probability*brdf_cone_light;
+            float modifier = numerator/denominator;
+            return modifier;
         } else {
             return 1.0;
-            //return cos_weighted_probability_density(outgoing_direction, normal);
         }
     } else {
         return 0.0f;
@@ -294,5 +300,9 @@ float cone_probability_density(float4 direction_to_light_center, float4 outgoing
     }
     float cos_maximum_angle = cos(maximum_angle);
     float maximum_sold_angle = 2.0f*M_PI*(1.0f-cos_maximum_angle);
+    // To avoid inf.
+    if(maximum_sold_angle < 1.0e-6) {
+        return FLT_MAX;
+    }
     return 2.0f*M_PI/maximum_sold_angle;
 }

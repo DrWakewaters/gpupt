@@ -29,6 +29,6 @@ float4 sample_cone_fast(float4 direction, float4 t_1, float4 t_2, float maximum_
 float4 sample(float4 position, float4 incoming_direction, float4 normal, float4 t_1, float4 t_2, float maximum_specular_angle, float specular_reflection_probability, bool *may_sample_cone, unsigned long *restrict state);
 
 // Color modification due to the sampling.
-float color_modifier(float4 position, float4 incoming_direction, float4 outgoing_direction, float4 normal, bool may_sample_cone);
+float color_modifier(float4 position, float4 incoming_direction, float4 outgoing_direction, float4 normal, float specular_reflection_probability, float maximum_specular_angle, bool may_sample_cone);
 float cos_weighted_probability_density(float4 outgoing_direction, float4 normal);
 float cone_probability_density(float4 direction_to_light_center, float4 outgoing_direction, float maximum_angle);
